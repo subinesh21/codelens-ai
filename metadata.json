@@ -1,0 +1,5 @@
+{
+  "name": "CodeLens AI",
+  "description": "An AI-powered platform that automatically analyzes, visualizes, and explains code through interactive diagrams and step-by-step execution simulation.",
+  "requestFramePermissions": []
+}
