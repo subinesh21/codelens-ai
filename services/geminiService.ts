@@ -1,8 +1,8 @@
-
+// services/geminiService.ts
 import { GoogleGenAI, Type } from "@google/genai";
 import { AnalysisResult, ExecutionTrace } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// REMOVE this line: const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 const ANALYSIS_SCHEMA = {
   type: Type.OBJECT,
@@ -79,7 +79,13 @@ const EXECUTION_TRACE_SCHEMA = {
   required: ["steps"]
 };
 
-export async function analyzeCode(code: string, language: string): Promise<AnalysisResult> {
+export async function analyzeCode(code: string, language: string, apiKey: string): Promise<AnalysisResult> {
+  if (!apiKey || apiKey.trim() === '') {
+    throw new Error('Please enter your Gemini API key above');
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
+
   const response = await ai.models.generateContent({
     model: "gemini-3-flash-preview",
     contents: `Analyze the following ${language} code and provide architectural insights, Mermaid.js diagrams, and key concepts. Keep explanations brief and concise. Output valid JSON.
@@ -108,7 +114,13 @@ ${code}`,
   }
 }
 
-export async function generateTrace(code: string, language: string): Promise<ExecutionTrace> {
+export async function generateTrace(code: string, language: string, apiKey: string): Promise<ExecutionTrace> {
+  if (!apiKey || apiKey.trim() === '') {
+    throw new Error('Please enter your Gemini API key above');
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
+
   const response = await ai.models.generateContent({
     model: "gemini-3-flash-preview",
     contents: `Simulate the step-by-step execution of this ${language} code. Provide a trace of variable states and line highlights. Keep explanations brief (1 sentence per step). Focus on the most common execution path. Output valid JSON.
@@ -137,7 +149,13 @@ ${code}`,
   }
 }
 
-export async function askQuestion(code: string, language: string, question: string, conversationHistory: Array<{role: string, content: string}> = []): Promise<string> {
+export async function askQuestion(code: string, language: string, question: string, conversationHistory: Array<{role: string, content: string}> = [], apiKey: string): Promise<string> {
+  if (!apiKey || apiKey.trim() === '') {
+    throw new Error('Please enter your Gemini API key above');
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
+
   let prompt = `You are a helpful coding assistant named as Codelens-AI. Answer questions about the provided code concisely and clearly. Keep responses brief and to the point (2-3 sentences max).\n\nHere is the ${language} code:\n\`\`\`${language}\n${code}\n\`\`\``;
 
   // Add conversation history if provided
