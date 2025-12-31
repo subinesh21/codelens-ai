@@ -19,6 +19,7 @@ import { analyzeCode, generateTrace } from './services/geminiService';
 import { MermaidDiagram } from './components/MermaidDiagram';
 import { ExecutionStepper } from './components/ExecutionStepper';
 import { ChatInterface } from './components/ChatInterface';
+import { checkAPIStatus, getQuotaMessage, type APIStatus } from './services/apiStatus';
 
 const DEFAULT_CODE = `function findMax(arr) {
   let max = arr[0];
@@ -50,10 +51,35 @@ const App: React.FC = () => {
   const [trace, setTrace] = useState<ExecutionTrace | null>(null);
   const [currentStep, setCurrentStep] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [apiStatus, setApiStatus] = useState<APIStatus | null>(null);
   const codeContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  // Add API status check effect
+  useEffect(() => {
+    const checkStatus = async () => {
+      try {
+        const status = await checkAPIStatus();
+        setApiStatus(status);
+      } catch (error) {
+        console.error('Failed to check API status:', error);
+      }
+    };
+    
+    checkStatus();
+    
+    // Refresh status every 5 minutes
+    const interval = setInterval(checkStatus, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
+
   const handleAnalyze = async () => {
+    // Check API status before analysis
+    if (apiStatus && apiStatus.activeKeys === 0) {
+      setError('API quota exhausted. Please add more API keys to continue.');
+      return;
+    }
+
     setIsAnalyzing(true);
     setError(null);
     try {
@@ -188,6 +214,32 @@ const App: React.FC = () => {
     }
   }, []);
 
+  const validateMermaidOnClient = (diagramCode: string): boolean => {
+    if (!diagramCode) return false;
+    
+    // Basic validation
+    const trimmed = diagramCode.trim();
+    if (trimmed.length === 0) return false;
+    
+    // Check for valid diagram type
+    const validStarts = ['graph TD', 'graph LR', 'sequenceDiagram', 'classDiagram', 'stateDiagram-v2', 'erDiagram'];
+    const isValidStart = validStarts.some(start => trimmed.startsWith(start));
+    
+    if (!isValidStart) {
+      console.warn('Invalid Mermaid start:', trimmed.substring(0, 50));
+      return false;
+    }
+    
+    // Check for newline after diagram type
+    const lines = trimmed.split('\n');
+    if (lines.length < 2) {
+      console.warn('Mermaid code missing newline after header');
+      return false;
+    }
+    
+    return true;
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100">
       {/* Header */}
@@ -218,9 +270,9 @@ const App: React.FC = () => {
 
           <button 
             onClick={handleAnalyze}
-            disabled={isAnalyzing}
+            disabled={isAnalyzing || (apiStatus && apiStatus.activeKeys === 0)}
             className={`flex items-center gap-2 px-6 py-2.5 rounded-lg font-bold transition-all ${
-              isAnalyzing 
+              isAnalyzing || (apiStatus && apiStatus.activeKeys === 0)
                 ? 'bg-slate-800 text-slate-500 cursor-not-allowed' 
                 : 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/30 active:scale-95 hover:-translate-y-0.5'
             }`}
@@ -230,6 +282,37 @@ const App: React.FC = () => {
           </button>
         </div>
       </header>
+
+      {/* API Status Display */}
+      {apiStatus && (
+        <div className="absolute top-16 right-6 z-50 animate-in fade-in slide-in-from-top-4 duration-500">
+          <div className="bg-slate-800/90 backdrop-blur-sm border border-slate-700 rounded-lg p-3 shadow-lg max-w-xs">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">API Status</span>
+              <span className={`text-xs px-2 py-1 rounded-full ${
+                apiStatus.activeKeys > 0 ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+              }`}>
+                {apiStatus.activeKeys > 0 ? 'Active' : 'Limited'}
+              </span>
+            </div>
+            <p className="text-sm text-slate-300 mb-2">{getQuotaMessage(apiStatus)}</p>
+            <div className="text-xs text-slate-500 space-y-1">
+              <div className="flex justify-between">
+                <span>Total Keys:</span>
+                <span className="text-slate-400">{apiStatus.totalKeys}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Active Keys:</span>
+                <span className="text-green-400">{apiStatus.activeKeys}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Exhausted:</span>
+                <span className="text-red-400">{apiStatus.failedKeys}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Main Workspace */}
       <main className="flex-1 flex overflow-hidden">
@@ -385,6 +468,9 @@ const App: React.FC = () => {
                       <div className="flex items-center gap-2 px-1">
                         <ChevronRight size={14} className="text-blue-500" />
                         <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Logical Flow Mapping</h3>
+                        {!validateMermaidOnClient(analysis.diagrams.flowchart) && (
+                          <span className="text-[8px] text-red-400 bg-red-500/10 px-2 py-0.5 rounded-full">Invalid Syntax</span>
+                        )}
                       </div>
                       <MermaidDiagram chart={analysis.diagrams.flowchart} id="flow" />
                     </section>
@@ -393,6 +479,9 @@ const App: React.FC = () => {
                       <div className="flex items-center gap-2 px-1">
                         <ChevronRight size={14} className="text-blue-500" />
                         <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Sequence & Call Order</h3>
+                        {!validateMermaidOnClient(analysis.diagrams.sequence) && (
+                          <span className="text-[8px] text-red-400 bg-red-500/10 px-2 py-0.5 rounded-full">Invalid Syntax</span>
+                        )}
                       </div>
                       <MermaidDiagram chart={analysis.diagrams.sequence} id="seq" />
                     </section>
@@ -401,9 +490,39 @@ const App: React.FC = () => {
                       <div className="flex items-center gap-2 px-1">
                         <ChevronRight size={14} className="text-blue-500" />
                         <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Dependency Hierarchy</h3>
+                        {!validateMermaidOnClient(analysis.diagrams.dependencies) && (
+                          <span className="text-[8px] text-red-400 bg-red-500/10 px-2 py-0.5 rounded-full">Invalid Syntax</span>
+                        )}
                       </div>
                       <MermaidDiagram chart={analysis.diagrams.dependencies} id="dep" />
                     </section>
+
+                    {/* Debug section - visible in development */}
+                    {process.env.NODE_ENV === 'development' && (
+                      <details className="mt-8 p-4 bg-slate-900/50 rounded-lg border border-slate-700">
+                        <summary className="cursor-pointer text-sm text-slate-400 font-mono">Debug: View Raw Mermaid Output</summary>
+                        <div className="mt-3 space-y-4">
+                          <div>
+                            <h4 className="text-xs text-slate-500 mb-1">Flowchart:</h4>
+                            <pre className="text-xs bg-slate-950 p-2 rounded overflow-auto max-h-40 whitespace-pre-wrap font-mono">
+                              {analysis.diagrams.flowchart}
+                            </pre>
+                          </div>
+                          <div>
+                            <h4 className="text-xs text-slate-500 mb-1">Sequence:</h4>
+                            <pre className="text-xs bg-slate-950 p-2 rounded overflow-auto max-h-40 whitespace-pre-wrap font-mono">
+                              {analysis.diagrams.sequence}
+                            </pre>
+                          </div>
+                          <div>
+                            <h4 className="text-xs text-slate-500 mb-1">Dependencies:</h4>
+                            <pre className="text-xs bg-slate-950 p-2 rounded overflow-auto max-h-40 whitespace-pre-wrap font-mono">
+                              {analysis.diagrams.dependencies}
+                            </pre>
+                          </div>
+                        </div>
+                      </details>
+                    )}
                   </div>
                 )}
 
@@ -425,7 +544,6 @@ const App: React.FC = () => {
           </div>
         </section>
       </main>
-      
     </div>
   );
 };
