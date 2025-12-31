@@ -113,9 +113,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
 CRITICAL MERMAID SYNTAX RULES:
 1. MANDATORY NEWLINES: You MUST put a newline after the diagram type declaration. 
+   Example: "classDiagram\n" NOT "classDiagram"
+   Example: "graph TD\n" NOT "graph TD"
 2. QUOTES: ALWAYS wrap node labels in double quotes.
 3. NO SEMICOLONS: Do not use semicolons (;) anywhere in the diagram.
 4. CLASS DIAGRAMS: Use "classDiagram" as the first line, then a newline, then your classes.
+
+IMPORTANT: Every diagram MUST start with exactly one of these headers followed by a newline:
+- "graph TD\n" (for top-down flowcharts)
+- "graph LR\n" (for left-right flowcharts)
+- "sequenceDiagram\n"
+- "classDiagram\n"
+- "stateDiagram-v2\n"
+- "erDiagram\n"
 
 Keep all explanations short (1-2 sentences max). Be concise.
 
