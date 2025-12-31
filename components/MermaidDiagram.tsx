@@ -36,6 +36,55 @@ export const MermaidDiagram: React.FC<Props> = ({ chart, id, onNodeClick }) => {
   // Helper function to clean Mermaid syntax
   const cleanMermaidSyntax = (code: string): string => {
     let cleaned = code.trim();
+
+    // Add this helper function at the top of the file
+const createFallbackDiagram = (type: string, code: string): string => {
+  switch(type) {
+    case 'flowchart':
+      return `graph TD
+    A["Code Analysis"] --> B["Parse ${code.split('\\n').length} lines"]
+    B --> C["Identify Functions"]
+    B --> D["Find Variables"]
+    C --> E["Generate Flow"]
+    D --> E
+    E --> F["Display Results"]`;
+    
+    case 'sequence':
+      return `sequenceDiagram
+    participant User
+    participant App
+    participant AI
+    User->>App: Submit Code
+    App->>AI: Request Analysis
+    AI->>App: Return Diagrams
+    App->>User: Display Visualizations`;
+    
+    case 'dependencies':
+      return `classDiagram
+    class CodeAnalysis {
+        +analyze()
+        +generateDiagrams()
+        +validateSyntax()
+    }
+    class MermaidRenderer {
+        +renderFlowchart()
+        +renderSequence()
+        +renderDependencies()
+    }
+    class UserInterface {
+        +displayResults()
+        +handleInteractions()
+    }
+    CodeAnalysis --> MermaidRenderer
+    UserInterface --> CodeAnalysis
+    UserInterface --> MermaidRenderer`;
+    
+    default:
+      return `graph TD
+    A["Analysis Required"] --> B["Waiting for AI Response"]
+    B --> C["Please try analyzing again"]`;
+  }
+};
     
     // Remove any markdown code blocks
     cleaned = cleaned.replace(/```mermaid\s*/g, '');
