@@ -1,3 +1,4 @@
+// App.tsx
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { 
   Code2, 
@@ -10,12 +11,8 @@ import {
   AlertCircle,
   Loader2,
   Sparkles,
-  Info,
   ChevronDown,
-  MessageCircle,
-  Eye,
-  EyeOff,
-  Key
+  MessageCircle
 } from 'lucide-react';
 import { AnalysisResult, ExecutionTrace, TabType } from './types';
 import { analyzeCode, generateTrace } from './services/geminiService';
@@ -47,8 +44,6 @@ const LANGUAGES = [
 const App: React.FC = () => {
   const [code, setCode] = useState(DEFAULT_CODE);
   const [language, setLanguage] = useState('javascript');
-  const [apiKey, setApiKey] = useState('');
-  const [showApiKey, setShowApiKey] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>(TabType.DIAGRAMS);
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
@@ -59,17 +54,12 @@ const App: React.FC = () => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const handleAnalyze = async () => {
-    if (!apiKey.trim()) {
-      setError('Please enter your Gemini API key');
-      return;
-    }
-    
     setIsAnalyzing(true);
     setError(null);
     try {
-      const result = await analyzeCode(code, language, apiKey);
+      const result = await analyzeCode(code, language);
       setAnalysis(result);
-      const traceResult = await generateTrace(code, language, apiKey);
+      const traceResult = await generateTrace(code, language);
       setTrace(traceResult);
       setCurrentStep(0);
     } catch (err: any) {
@@ -213,28 +203,6 @@ const App: React.FC = () => {
         </div>
 
         <div className="ml-auto flex items-center gap-4">
-          {/* API Key Input */}
-          <div className="relative group">
-            <div className="flex items-center gap-2">
-              <Key size={14} className="text-blue-400" />
-              <input
-                type={showApiKey ? "text" : "password"}
-                placeholder="Gemini API Key"
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                className="bg-slate-800 border border-slate-700 text-xs text-slate-300 py-2 px-4 rounded-lg w-48 focus:ring-2 focus:ring-blue-500/50 outline-none placeholder:text-slate-600"
-              />
-              <button
-                onClick={() => setShowApiKey(!showApiKey)}
-                className="p-1.5 hover:bg-slate-700 rounded-md transition-colors"
-                title={showApiKey ? "Hide key" : "Show key"}
-              >
-                {showApiKey ? <EyeOff size={14} className="text-slate-400" /> : <Eye size={14} className="text-slate-400" />}
-              </button>
-            </div>
-            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500/30 scale-x-0 group-hover:scale-x-100 transition-transform duration-300" />
-          </div>
-
           <div className="relative group">
             <select 
               value={language}
@@ -250,38 +218,18 @@ const App: React.FC = () => {
 
           <button 
             onClick={handleAnalyze}
-            disabled={isAnalyzing || !apiKey.trim()}
+            disabled={isAnalyzing}
             className={`flex items-center gap-2 px-6 py-2.5 rounded-lg font-bold transition-all ${
-              !apiKey.trim() 
+              isAnalyzing 
                 ? 'bg-slate-800 text-slate-500 cursor-not-allowed' 
-                : isAnalyzing 
-                  ? 'bg-slate-800 text-slate-500 cursor-not-allowed' 
-                  : 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/30 active:scale-95 hover:-translate-y-0.5'
+                : 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/30 active:scale-95 hover:-translate-y-0.5'
             }`}
           >
             {isAnalyzing ? <Loader2 className="animate-spin" size={20} /> : <Sparkles size={18} />}
-            {!apiKey.trim() ? 'Enter API Key' : isAnalyzing ? 'Analyzing...' : 'Analyze Code'}
+            {isAnalyzing ? 'Analyzing...' : 'Analyze Code'}
           </button>
         </div>
       </header>
-
-      {/* API Key Info Banner */}
-      {!apiKey.trim() && (
-        <div className="bg-gradient-to-r from-blue-900/30 to-indigo-900/30 border-b border-blue-500/30 p-3 text-center">
-          <div className="flex items-center justify-center gap-3 text-sm">
-            <Info size={16} className="text-blue-400" />
-            <span className="text-blue-300">Get your free </span>
-            <a 
-              href="https://makersuite.google.com/app/apikey" 
-              target="_blank"
-              className="text-white font-bold hover:underline bg-blue-600 px-3 py-1 rounded-lg hover:bg-blue-500 transition-colors"
-            >
-              Gemini API Key
-            </a>
-            <span className="text-blue-300"> from Google AI Studio</span>
-          </div>
-        </div>
-      )}
 
       {/* Main Workspace */}
       <main className="flex-1 flex overflow-hidden">
@@ -365,34 +313,7 @@ const App: React.FC = () => {
           </div>
 
           <div className={`flex-1 ${activeTab === TabType.CHAT ? 'overflow-hidden p-0' : 'overflow-y-auto p-6'} scroll-smooth bg-[radial-gradient(circle_at_top_right,#1e293b,transparent)]`}>
-            {!apiKey.trim() && !analysis && !isAnalyzing && activeTab !== TabType.CHAT && (
-              <div className="h-full flex flex-col items-center justify-center text-center space-y-8 max-w-sm mx-auto">
-                <div className="relative">
-                  <div className="absolute inset-0 bg-blue-500/20 blur-3xl rounded-full" />
-                  <div className="w-24 h-24 rounded-[2rem] bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-700 shadow-2xl relative">
-                    <Key size={48} className="text-blue-500" />
-                  </div>
-                </div>
-                <div>
-                  <h2 className="text-2xl font-bold text-white tracking-tight">AI-Powered Code Analysis</h2>
-                  <p className="text-slate-500 mt-3 text-sm leading-relaxed">
-                    Enter your Gemini API key above to unlock AI-powered code analysis, interactive diagrams, and step-by-step execution simulation.
-                  </p>
-                  <div className="mt-8">
-                    <a 
-                      href="https://makersuite.google.com/app/apikey" 
-                      target="_blank"
-                      className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white px-6 py-3 rounded-lg font-bold transition-all hover:-translate-y-0.5"
-                    >
-                      <Sparkles size={16} />
-                      Get Free API Key
-                    </a>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {!analysis && !isAnalyzing && apiKey.trim() && activeTab !== TabType.CHAT && (
+            {!analysis && !isAnalyzing && activeTab !== TabType.CHAT && (
               <div className="h-full flex flex-col items-center justify-center text-center space-y-8 max-w-sm mx-auto">
                 <div className="relative">
                   <div className="absolute inset-0 bg-blue-500/20 blur-3xl rounded-full" />
@@ -452,7 +373,7 @@ const App: React.FC = () => {
 
             {activeTab === TabType.CHAT && (
               <div className="h-full p-6 animate-in fade-in duration-500">
-                <ChatInterface code={code} language={language} apiKey={apiKey} />
+                <ChatInterface code={code} language={language} />
               </div>
             )}
 
