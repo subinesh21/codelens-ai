@@ -284,30 +284,32 @@ const App: React.FC = () => {
       </header>
 
       {/* API Status Display */}
+      // Update the API status display to match the actual API response
       {apiStatus && (
-        <div className="absolute top-16 right-6 z-50 animate-in fade-in slide-in-from-top-4 duration-500">
+        <div className="absolute top-16 right-6 z-50">
           <div className="bg-slate-800/90 backdrop-blur-sm border border-slate-700 rounded-lg p-3 shadow-lg max-w-xs">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">API Status</span>
               <span className={`text-xs px-2 py-1 rounded-full ${
-                apiStatus.activeKeys > 0 ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                apiStatus.status === 'operational' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
               }`}>
-                {apiStatus.activeKeys > 0 ? 'Active' : 'Limited'}
+                {apiStatus.status === 'operational' ? 'Active' : 'Limited'}
               </span>
             </div>
             <p className="text-sm text-slate-300 mb-2">{getQuotaMessage(apiStatus)}</p>
             <div className="text-xs text-slate-500 space-y-1">
               <div className="flex justify-between">
                 <span>Total Keys:</span>
-                <span className="text-slate-400">{apiStatus.totalKeys}</span>
+                <span className="text-slate-400">{apiStatus.apiKeys.configured}</span>
               </div>
               <div className="flex justify-between">
-                <span>Active Keys:</span>
-                <span className="text-green-400">{apiStatus.activeKeys}</span>
+                <span>Status:</span>
+                <span className={apiStatus.status === 'operational' ? 'text-green-400' : 'text-red-400'}>
+                  {apiStatus.status}
+                </span>
               </div>
-              <div className="flex justify-between">
-                <span>Exhausted:</span>
-                <span className="text-red-400">{apiStatus.failedKeys}</span>
+              <div className="text-[10px] text-slate-600 mt-2">
+                Daily limit: {apiStatus.apiKeys.configured * 20} requests
               </div>
             </div>
           </div>

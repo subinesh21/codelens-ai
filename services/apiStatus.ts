@@ -2,46 +2,45 @@
 const API_BASE = 'https://codelens-ai-api.vercel.app/api';
 
 export interface APIStatus {
-  message: string;
-  totalKeys: number;
-  activeKeys: number;
-  failedKeys: number;
-  usage: Array<{ index: number; count: number }>;
+  service: string;
+  status: string;
   timestamp: string;
+  apiKeys: {
+    configured: number;
+    sampleFirstChars: string[];
+  };
+  endpoints: any;
+  limits: any;
 }
 
 export async function checkAPIStatus(): Promise<APIStatus> {
   try {
-    const response = await fetch(`${API_BASE}/gemini/status`);
+    const response = await fetch(`${API_BASE}/status`);
     if (!response.ok) {
       throw new Error(`Status check failed: ${response.status}`);
     }
     return await response.json();
   } catch (error) {
     console.error('API status check failed:', error);
+    // Return a fallback status
     return {
-      message: 'API unavailable',
-      totalKeys: 0,
-      activeKeys: 0,
-      failedKeys: 0,
-      usage: [],
+      service: 'CodeLens AI API',
+      status: 'unavailable',
       timestamp: new Date().toISOString(),
+      apiKeys: {
+        configured: 0,
+        sampleFirstChars: [],
+      },
+      endpoints: {},
+      limits: {},
     };
   }
 }
 
 export function getQuotaMessage(status: APIStatus): string {
-  if (status.totalKeys === 0) {
+  if (status.apiKeys.configured === 0) {
     return 'No API keys configured';
   }
   
-  if (status.failedKeys === status.totalKeys) {
-    return `All ${status.totalKeys} API keys exhausted. Daily quota reached.`;
-  }
-  
-  if (status.failedKeys > 0) {
-    return `${status.failedKeys} of ${status.totalKeys} API keys exhausted. ${status.activeKeys} keys remaining.`;
-  }
-  
-  return `${status.totalKeys} API keys available`;
+  return `${status.apiKeys.configured} API keys available (${status.apiKeys.configured * 20} requests/day)`;
 }
